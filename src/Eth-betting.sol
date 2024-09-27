@@ -2,7 +2,6 @@ pragma solidity ^0.8.13;
 
 import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "forge-std/console.sol";
-import "./Network-config.sol";
 import "forge-std/Test.sol";
 
 
