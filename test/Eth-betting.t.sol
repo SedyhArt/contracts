@@ -34,13 +34,13 @@ contract EthBettingTest is Test {
     function testCreateBet() public {
 
         vm.expectRevert(EthBetting.InsufficientStake.selector);
-        _createBet(0 ether, true, 10);
+        _createBet(0 ether, true, 100000);
 
         vm.expectRevert(EthBetting.InvalidPredictionPercentage.selector);
         _createBet(10 ether, true, 0);
 
         // Create bet
-        _createBet(1 ether, true, 10);
+        _createBet(1 ether, true, 100000);
         // Get the created bet
         EthBetting.Bet memory bet = ethBetting.getBet(0);
 
@@ -49,7 +49,7 @@ contract EthBettingTest is Test {
         assertEq(bet.creatorAddress, address(this), "Creator address should match");
         assertEq(bet.stakeAmount, 1 ether, "Stake amount should match");
         assertEq(bet.predictionDirection, true, "Prediction direction should match");
-        assertEq(bet.predictionPercentage, 10, "Prediction percentage should match");
+        assertEq(bet.predictionPercentage, 100000, "Prediction percentage should match");
         assertEq(uint(bet.status), uint(EthBetting.BetStatus.PendingForTheChallenger), "Bet status should be PendingForTheChallenger");
 
         // Logs
@@ -66,7 +66,7 @@ contract EthBettingTest is Test {
     function testJoinBet() public {
         vm.startPrank(creator);
         // Create bet with creator account
-        uint256 betId = _createBet(1 ether, true, 10);
+        uint32 betId = _createBet(1 ether, true, 100000);
         vm.stopPrank();
         vm.startPrank(challenger);
 
@@ -105,8 +105,8 @@ contract EthBettingTest is Test {
 
     function testCalcPercentPriceChange() public {
         console.log("CALC PERCENT", ethBetting.calcPriceChangePercent(100, 120));
-        assertEq(ethBetting.calcPriceChangePercent(100, 120), 20);
-        assertEq(ethBetting.calcPriceChangePercent(2200, 2530), 15);
+        assertEq(ethBetting.calcPriceChangePercent(100, 120), 200000);
+        assertEq(ethBetting.calcPriceChangePercent(2200, 2530), 150000);
     }
 
 
@@ -114,7 +114,7 @@ contract EthBettingTest is Test {
         vm.startPrank(creator);
 
         // Create bet with creator account
-        uint256 betId = _createBet(1 ether, true, 10);
+        uint32 betId = _createBet(1 ether, true, 100000);
         vm.stopPrank();
         vm.startPrank(challenger);
 
@@ -133,7 +133,7 @@ contract EthBettingTest is Test {
         vm.expectRevert(EthBetting.BetEndTimeHasNotComeYet.selector);
         ethBetting.finishBet(betId);
 
-        uint256 currentTimestamp = block.timestamp;
+        uint32 currentTimestamp = uint32(block.timestamp);
 
         vm.warp(currentTimestamp + 8 days);
         mockPriceFeed.updateAnswer(2100 * 10**18);
@@ -156,7 +156,7 @@ contract EthBettingTest is Test {
     function testWithdraw() public {
         //Creating and finishing bet
         vm.startPrank(creator);
-        uint256 betId = _createBet(1 ether, true, 10);
+        uint32 betId = _createBet(1 ether, true, 100000);
         vm.stopPrank();
         vm.startPrank(challenger);
         EthBetting.Bet memory bet = ethBetting.getBet(betId);
@@ -203,7 +203,7 @@ contract EthBettingTest is Test {
         assertApproxEqRel(
             actualBalanceChange,
             expectedBalanceChange - gasCost,
-            1e17,
+            1e18,
             "Winner should collect prize minus gas costs (within 1% tolerance)"
         );
         vm.stopPrank();
@@ -211,13 +211,13 @@ contract EthBettingTest is Test {
 
     function testWithdrawCommission() public {
         vm.startPrank(creator);
-        uint256 betId = _createBet(1 ether, true, 10);
+        uint32 betId = _createBet(1 ether, true, 100000);
         vm.stopPrank();
         vm.startPrank(challenger);
         EthBetting.Bet memory bet = ethBetting.getBet(betId);
         uint256 ethAmountToJoin = bet.stakeAmount;
         ethBetting.joinBet{value: ethAmountToJoin}(0);
-        uint256 currentTimestamp = block.timestamp;
+        uint32 currentTimestamp = uint32(block.timestamp);
         vm.warp(currentTimestamp + 8 days);
         mockPriceFeed.updateAnswer(2100 * 10**18);
         ethBetting.finishBet(betId);
@@ -238,9 +238,9 @@ contract EthBettingTest is Test {
         assertEq(ethBetting.getLatestPrice(), 2200 * 10**18);
     }
 
-    function _createBet(uint256 _ethAmount, bool _predictionDirection, uint256 _predictionPercent ) private returns (uint256) {
+    function _createBet(uint256 _ethAmount, bool _predictionDirection, uint24 _predictionPercent ) private returns (uint32) {
         // Create a bet
-        uint256 _betId = ethBetting.createBet{value: _ethAmount}(_predictionDirection, _predictionPercent);
+        uint32 _betId = ethBetting.createBet{value: _ethAmount}(_predictionDirection, _predictionPercent);
         vm.stopPrank();
         return _betId;
     }

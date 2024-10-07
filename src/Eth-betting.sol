@@ -2,7 +2,6 @@ pragma solidity ^0.8.13;
 
 import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "forge-std/console.sol";
-import "./Network-config.sol";
 import "forge-std/Test.sol";
 
 
@@ -10,17 +9,17 @@ import "forge-std/Test.sol";
 contract EthBetting {
     // Structs
     struct Bet {
-        uint256 id;
+        uint32 id;
         address creatorAddress;
         address challengerAddress;
         address winner;
         uint256 stakeAmount;
         bool predictionDirection;
-        uint256 predictionPercentage;
+        uint24 predictionPercentage;
         int startPrice;
         int endPrice;
-        uint256 startTime;
-        uint256 endTime;
+        uint32 startTime;
+        uint32 endTime;
         BetStatus status;
         bool paid;
     }
@@ -43,17 +42,17 @@ contract EthBetting {
     // State variables
     AggregatorV3Interface internal priceFeed;
     uint256 public constant PLATFORM_COMMISSION_PERCENT = 10;
-    uint256 public nextBetId;
+    uint32 public nextBetId;
     uint256 public totalCommission;
     address public owner;
 
     // Mappings
-    mapping(uint256 => Bet) private betStorage;
+    mapping(uint32 => Bet) private betStorage;
 
     // Events
-    event BetCreated(uint256 indexed betId, address indexed creator, uint256 stakeAmount);
-    event BetJoined(uint256 indexed betId, address indexed challenger);
-    event BetFinished(uint256 indexed betId, address indexed winner);
+    event BetCreated(uint32 indexed betId, address indexed creator, uint256 stakeAmount);
+    event BetJoined(uint32 indexed betId, address indexed challenger);
+    event BetFinished(uint32 indexed betId, address indexed winner);
     event CommissionCollected(uint256 amount);
     event Withdraw(address winner, uint256 amount);
 
@@ -68,12 +67,12 @@ contract EthBetting {
     }
 
     // External functions
-    function createBet(bool predictionDirection, uint256 predictionPercentage) external payable returns(uint256) {
+    function createBet(bool predictionDirection, uint24 predictionPercentage) external payable returns(uint32) {
         if (msg.value == 0) revert InsufficientStake();
         if (predictionPercentage == 0) revert InvalidPredictionPercentage();
 
         int currentPrice = getLatestPrice();
-        uint256 betId = nextBetId++;
+        uint32 betId = nextBetId++;
 
         betStorage[betId] = Bet({
             id: betId,
@@ -85,7 +84,7 @@ contract EthBetting {
             predictionPercentage: predictionPercentage,
             startPrice: currentPrice,
             endPrice: 0,
-            startTime: block.timestamp,
+            startTime: uint32(block.timestamp),
             endTime: 0,
             status: BetStatus.PendingForTheChallenger,
             paid: false
@@ -95,13 +94,13 @@ contract EthBetting {
         return betId;
     }
 
-    function joinBet(uint256 betId) external payable {
+    function joinBet(uint32 betId) external payable {
         Bet storage bet = betStorage[betId];
         if (bet.status != BetStatus.PendingForTheChallenger) revert BetNotPending();
         if (msg.value < bet.stakeAmount) revert InsufficientStake();
 
         // Bet will end in 7 days
-        bet.endTime = block.timestamp + 7 * 24 * 60 * 60;
+        bet.endTime = uint32(block.timestamp) + 7 * 24 * 60 * 60;
 
         bet.challengerAddress = msg.sender;
         bet.status = BetStatus.Active;
@@ -114,7 +113,7 @@ contract EthBetting {
         emit CommissionCollected(commission);
     }
 
-    function finishBet(uint256 betId) external payable {
+    function finishBet(uint32 betId) external payable {
         Bet storage bet = betStorage[betId];
 
         if (bet.status == BetStatus.Finished) revert BetIsAlreadyFinished();
@@ -126,7 +125,7 @@ contract EthBetting {
 
         // true if price has increased
         bool changedDirection = bet.endPrice > bet.startPrice;
-        uint256 pricePercentChanged = calcPriceChangePercent(bet.startPrice, bet.endPrice);
+        uint24 pricePercentChanged = calcPriceChangePercent(bet.startPrice, bet.endPrice);
         address winner = changedDirection == bet.predictionDirection && pricePercentChanged >= bet.predictionPercentage ? bet.creatorAddress : bet.challengerAddress;
 
         bet.status = BetStatus.Finished;
@@ -135,7 +134,7 @@ contract EthBetting {
         emit BetFinished(betId, winner);
     }
 
-    function withdraw(uint256 betId) public {
+    function withdraw(uint32 betId) public {
         Bet storage bet = betStorage[betId];
         if (bet.status != BetStatus.Finished) revert BetIsStillActive();
         if (msg.sender != bet.winner) revert NotAuthorized();
@@ -158,11 +157,13 @@ contract EthBetting {
     }
 
 
-    function calcPriceChangePercent(int startPrice, int endPrice) public returns (uint256) {
-        int priceChange = endPrice - startPrice;
+    function calcPriceChangePercent(int startPrice, int endPrice) public pure returns (uint24) {
+        int256 priceChange = endPrice - startPrice;
         uint256 absolutePriceChange = uint256(priceChange < 0 ? -priceChange : priceChange);
-        uint256 pricePercentChanged = (absolutePriceChange * 100) / uint256(startPrice);
-        return pricePercentChanged;
+        uint256 percentChanged = (absolutePriceChange * 1e6) / uint256(startPrice);
+        require(percentChanged <= type(uint24).max, "Percent change exceeds uint24 range");
+
+        return uint24(percentChanged);
     }
 
     function getLatestPrice() public view returns (int) {
@@ -170,7 +171,7 @@ contract EthBetting {
         return price;
     }
 
-    function getBet(uint256 betId) external view returns (Bet memory) {
+    function getBet(uint32 betId) external view returns (Bet memory) {
         return betStorage[betId];
     }
 
