@@ -13,6 +13,8 @@ Foundry consists of:
 
 https://book.getfoundry.sh/
 
+forge test -vv --fork-url https://eth-sepolia.g.alchemy.com/v2/jEroH4-jGpz3OoVelM-VxkMhVuxaXarC
+
 ## Usage
 
 ### Build
