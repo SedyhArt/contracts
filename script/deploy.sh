@@ -4,7 +4,6 @@
 set -e
 
 # Variables (update these with your specific details)
-ETHERSCAN_API_KEY="WJJPJ72GIDVI8QHWKVBWQGJ9UE7BVTDF58"
 CHAIN_ID=11155111
 DEPLOYED_ADDRESS="0x702b3CE0530f10D72ED251629307384ab8749Af8"
 CONTRACT_PATH="src/CreepzSoulbound.sol" # Path to the contract file
